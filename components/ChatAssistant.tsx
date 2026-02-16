@@ -7,12 +7,34 @@ import { useState, useRef, useEffect } from 'react';
 export default function ChatAssistant() {
     const [isOpen, setIsOpen] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-    const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, error } = useChat({
-        maxSteps: 3,
+    const [input, setInput] = useState('');
+    const { messages, sendMessage, status, setMessages, error } = useChat({
         onError: (error) => {
             setApiError(error.message);
         },
     });
+
+    const isLoading = status === 'submitted' || status === 'streaming';
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setInput(e.target.value);
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!input.trim() || isLoading) return;
+
+        const currentInput = input;
+        setInput('');
+
+        try {
+            await sendMessage({
+                text: currentInput,
+            });
+        } catch (err) {
+            setInput(currentInput); // Restore input on error
+        }
+    };
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -80,7 +102,7 @@ export default function ChatAssistant() {
                                 <p className="text-red-600 dark:text-red-400 text-xs mt-2">Please check your API key configuration.</p>
                             </div>
                         )}
-                        
+
                         {messages.length === 0 && !apiError && (
                             <div className="text-center text-zinc-500 mt-10">
                                 <p className="mb-2">👋 Hi there!</p>
@@ -90,35 +112,42 @@ export default function ChatAssistant() {
 
                         {messages.map((m) => (
                             <div key={m.id} className="space-y-4">
-                                {m.content && (
-                                    <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div
-                                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${m.role === 'user'
-                                                ? 'bg-amber-400 text-zinc-900 rounded-tr-none'
-                                                : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-tl-none shadow-sm'
-                                                }`}
-                                        >
-                                            <p className="whitespace-pre-wrap">{m.content}</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {m.toolInvocations?.map((toolInvocation) => {
-                                    const toolCallId = toolInvocation.toolCallId;
-                                    const isCompleted = 'result' in toolInvocation;
-
-                                    return (
-                                        <div key={toolCallId} className="flex justify-start">
-                                            <div className="bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 rounded-xl px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
-                                                {toolInvocation.toolName === 'search_products' ? (
-                                                    <span>{isCompleted ? 'Search completed' : `Searching for "${(toolInvocation.args as any).query}"...`}</span>
-                                                ) : (
-                                                    <span>{isCompleted ? 'Details retrieved' : 'Fetching details...'}</span>
-                                                )}
+                                {m.parts.map((part, i) => {
+                                    if (part.type === 'text') {
+                                        return (
+                                            <div key={`${m.id}-part-${i}`} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                <div
+                                                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${m.role === 'user'
+                                                        ? 'bg-amber-400 text-zinc-900 rounded-tr-none'
+                                                        : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-tl-none shadow-sm'
+                                                        }`}
+                                                >
+                                                    <p className="whitespace-pre-wrap">{part.text}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
+                                        );
+                                    }
+
+                                    if (part.type.startsWith('tool-')) {
+                                        const toolName = part.type.split('-')[1];
+                                        const toolInvocation = part as any; // Cast for easier access to properties like state and input
+                                        const isCompleted = toolInvocation.state === 'output-available';
+
+                                        return (
+                                            <div key={toolInvocation.toolCallId} className="flex justify-start">
+                                                <div className="bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 rounded-xl px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
+                                                    {toolName === 'search_products' ? (
+                                                        <span>{isCompleted ? 'Search completed' : `Searching for "${(toolInvocation.input as any)?.query || '...'}"...`}</span>
+                                                    ) : (
+                                                        <span>{isCompleted ? 'Details retrieved' : 'Fetching details...'}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return null;
                                 })}
                             </div>
                         ))}

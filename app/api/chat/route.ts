@@ -26,9 +26,6 @@ export async function POST(req: Request) {
         tools: {
             search_products: tool({
                 description: 'Search for products in the store catalog by query string (name, category, or description).',
-                parameters: z.object({
-                    query: z.string().describe('The search terms to look for'),
-                }),
                 execute: async ({ query }) => {
                     const { data, error } = await supabase
                         .from('products')
@@ -37,14 +34,14 @@ export async function POST(req: Request) {
                         .limit(5);
 
                     if (error) throw error;
-                    return data;
+                    return data || [];
                 },
+                inputSchema: z.object({
+                    query: z.string().describe('The search terms to look for'),
+                }),
             }),
             get_product_details: tool({
                 description: 'Get detailed information about a specific product by its ID.',
-                parameters: z.object({
-                    id: z.string().describe('The unique identifier of the product'),
-                }),
                 execute: async ({ id }) => {
                     const { data, error } = await supabase
                         .from('products')
@@ -55,9 +52,12 @@ export async function POST(req: Request) {
                     if (error) throw error;
                     return data;
                 },
+                inputSchema: z.object({
+                    id: z.string().describe('The unique identifier of the product'),
+                }),
             }),
         },
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
 }
