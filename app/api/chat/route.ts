@@ -13,7 +13,7 @@ export async function POST(req: Request) {
         const modelMessages = await convertToModelMessages(messages);
 
         const result = streamText({
-            model: google('gemini-1.5-flash'),
+            model: google('gemini-1.5-flash-latest'),
             system: `You are ShopMate's AI Shopping Assistant. 
     You help customers find products, answer questions about specifications, and provide recommendations based on our live inventory.
     
