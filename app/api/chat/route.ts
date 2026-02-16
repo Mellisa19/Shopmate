@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { streamText, tool } from 'ai';
+import { streamText, tool, convertToModelMessages } from 'ai';
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 
@@ -8,6 +8,9 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
     try {
         const { messages } = await req.json();
+
+        // Convert UI messages to model messages (v6 requirement)
+        const modelMessages = await convertToModelMessages(messages);
 
         const result = streamText({
             model: openai('gpt-4o'),
@@ -23,7 +26,7 @@ export async function POST(req: Request) {
     6. Always format product names in bold (e.g., **Product Name**).
     7. When recommending, mention the price and one key feature.
     8. You can search by name, category, or description.`,
-            messages,
+            messages: modelMessages,
             tools: {
                 search_products: tool({
                     description: 'Search for products in the store catalog by query string (name, category, or description).',
