@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { streamText, tool, convertToModelMessages } from 'ai';
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
         const modelMessages = await convertToModelMessages(messages);
 
         const result = streamText({
-            model: openai('gpt-4o'),
+            model: google('gemini-1.5-flash'),
             system: `You are ShopMate's AI Shopping Assistant. 
     You help customers find products, answer questions about specifications, and provide recommendations based on our live inventory.
     
