@@ -16,6 +16,11 @@ export default function ChatAssistant() {
 
     const isLoading = status === 'submitted' || status === 'streaming';
 
+    useEffect(() => {
+        console.log('Chat Status:', status);
+        if (error) console.error('Chat Error:', error);
+    }, [status, error]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setInput(e.target.value);
     };
@@ -28,10 +33,12 @@ export default function ChatAssistant() {
         setInput('');
 
         try {
+            console.log('Sending message:', currentInput);
             await sendMessage({
                 text: currentInput,
             });
         } catch (err) {
+            console.error('Manual sendMessage catch:', err);
             setInput(currentInput); // Restore input on error
         }
     };
